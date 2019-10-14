@@ -88,7 +88,7 @@ class BaseDetector(object):
     pre_processed = False
     if isinstance(image_or_path_or_tensor, np.ndarray):
       image = image_or_path_or_tensor
-    elif type(image_or_path_or_tensor) == type (''): 
+    elif type(image_or_path_or_tensor) == type (''):
       image = cv2.imread(image_or_path_or_tensor)
     else:
       image = image_or_path_or_tensor['image'][0].numpy()
@@ -142,3 +142,46 @@ class BaseDetector(object):
     return {'results': results, 'tot': tot_time, 'load': load_time,
             'pre': pre_time, 'net': net_time, 'dec': dec_time,
             'post': post_time, 'merge': merge_time}
+
+  def run_dota(self, image_or_path_or_tensor, meta=None):
+    load_time, pre_time, net_time, dec_time, post_time = 0, 0, 0, 0, 0
+    merge_time, tot_time = 0, 0
+
+    start_time = time.time()
+    image = image_or_path_or_tensor
+
+    loaded_time = time.time()
+    load_time += (loaded_time - start_time)
+
+    detections = []
+    for scale in self.scales:
+      scale_start_time = time.time()
+
+      images, meta = self.pre_process(image, scale, meta)
+
+      images = images.to(self.opt.device)
+      torch.cuda.synchronize()
+      pre_process_time = time.time()
+      pre_time += pre_process_time - scale_start_time
+
+      output, dets, forward_time = self.process(images, return_time=True)
+
+      torch.cuda.synchronize()
+      net_time += forward_time - pre_process_time
+      decode_time = time.time()
+      dec_time += decode_time - forward_time
+
+      dets = self.post_process(dets, meta, scale)
+      torch.cuda.synchronize()
+      post_process_time = time.time()
+      post_time += post_process_time - decode_time
+
+      detections.append(dets)
+
+    results = self.merge_outputs(detections)
+    torch.cuda.synchronize()
+    end_time = time.time()
+    merge_time += end_time - post_process_time
+    tot_time += end_time - start_time
+
+    return results, detections

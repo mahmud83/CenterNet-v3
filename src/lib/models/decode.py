@@ -5,6 +5,9 @@ from __future__ import print_function
 import torch
 import torch.nn as nn
 from .utils import _gather_feat, _tranpose_and_gather_feat
+import math
+from itertools import chain
+import cv2
 
 def _nms(heat, kernel=3):
     pad = (kernel - 1) // 2
@@ -569,3 +572,41 @@ def multi_pose_decode(
   detections = torch.cat([bboxes, scores, kps, clses], dim=2)
     
   return detections
+
+def ctdet_angle_decode(heat, wh, angle, reg=None, cat_spec_wh=False, K=100):
+    batch, cat, height, width = heat.size()
+    # perform nms on heatmaps
+    heat = _nms(heat)
+
+    scores, inds, clses, ys, xs = _topk(heat, K=K)
+    if reg is not None:
+        reg = _tranpose_and_gather_feat(reg, inds)
+        reg = reg.view(batch, K, 2)
+        xs = xs.view(batch, K, 1) + reg[:, :, 0:1]
+        ys = ys.view(batch, K, 1) + reg[:, :, 1:2]
+    else:
+        xs = xs.view(batch, K, 1) + 0.5
+        ys = ys.view(batch, K, 1) + 0.5
+
+    if angle is not None:
+        angle = _tranpose_and_gather_feat(angle, inds)
+    wh = _tranpose_and_gather_feat(wh, inds)
+    if cat_spec_wh:
+        wh = wh.view(batch, K, cat, 2)
+        clses_ind = clses.view(batch, K, 1, 1).expand(batch, K, 1, 2).long()
+        wh = wh.gather(2, clses_ind).view(batch, K, 2)
+    else:
+        wh = wh.view(batch, K, 2)
+    clses = clses.view(batch, K, 1).float()
+    scores = scores.view(batch, K, 1)
+    # radian form to angle form
+    reg_angle = angle / math.pi * 180
+    # rect = ((xs, ys), (wh[..., 0:1], wh[..., 1:2]), reg_angle)
+    rect = [list(chain.from_iterable(cv2.boxPoints(((xs[0][i].item(), ys[0][i].item()),
+                                       (wh[0][i][0].item(), wh[0][i][1].item()),
+                                       reg_angle[0][i].item())))) for i in range(K)]
+
+    bboxes = torch.cuda.FloatTensor(rect).view(1, K, 8)
+    detections = torch.cat([bboxes, scores, clses], dim=2)
+    # bbox include 8 points
+    return detections
