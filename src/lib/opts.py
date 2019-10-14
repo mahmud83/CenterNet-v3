@@ -288,7 +288,7 @@ class opts(object):
     input_h, input_w = dataset.default_resolution
     opt.mean, opt.std = dataset.mean, dataset.std
     opt.num_classes = dataset.num_classes
-
+    opt.num_joints = dataset.num_joints
     # input_h(w): opt.input_h overrides opt.input_res overrides dataset default
     input_h = opt.input_res if opt.input_res > 0 else input_h
     input_w = opt.input_res if opt.input_res > 0 else input_w
@@ -338,6 +338,16 @@ class opts(object):
         opt.heads.update({'hm_hp': 17})
       if opt.reg_hp_offset:
         opt.heads.update({'hp_offset': 2})
+    elif opt.task == 'dota_four':
+      # assert opt.dataset in ['coco_hp']
+      opt.flip_idx = dataset.flip_idx
+      opt.heads = {'hm': opt.num_classes, 'hps': 8}
+      if opt.reg_offset:
+        opt.heads.update({'reg': 2})
+      if opt.hm_hp:
+        opt.heads.update({'hm_hp': 4})
+      if opt.reg_hp_offset:
+        opt.heads.update({'hp_offset': 2})
     else:
       assert 0, 'task not defined!'
     print('heads', opt.heads)
@@ -362,6 +372,12 @@ class opts(object):
         'dataset': 'coco_hp', 'num_joints': 17,
         'flip_idx': [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], 
                      [11, 12], [13, 14], [15, 16]]},
+      'dota_four': {
+          'default_resolution': [512, 512], 'num_classes': 2,
+          'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
+          'dataset': 'dota_four', 'num_joints': 4,
+          'flip_idx': [[1, 2], [3, 4]]},
+
       'ddd': {'default_resolution': [384, 1280], 'num_classes': 3, 
                 'mean': [0.485, 0.456, 0.406], 'std': [0.229, 0.224, 0.225],
                 'dataset': 'kitti'},

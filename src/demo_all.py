@@ -184,16 +184,13 @@ def patchImg(img, resolution=1, scale=512, overlap=0.25):
             # update
             if w_max == w_new:
                 break
-            # w_min = int(w_min + scale * (1 - overlap))
             w_max = int(min([w_max + scale * (1 - overlap), w_new]))
             w_min = int(w_max - scale)
 
         h_overlaps.append(h_min / scale)
-        # h_overlaps.append(h_last + scale - h_min)
         # update
         if h_max == h_new:
             break
-            # h_min = int(h_min + scale * (1 - overlap))
         h_max = int(min([h_max + scale * (1 - overlap), h_new]))
         h_min = int(h_max - scale)
     # img_resolution origin img
@@ -207,25 +204,19 @@ def uniform_bbox_nms(h_overlaps, w_overlaps, key_name, results, vis_thresh):
     bbox_right = {}
     bbox_right_list = []
     bbox_bottom = {}
-    # bbox_class = {}
+
     h_len = len(h_overlaps)
     for i in range(len(h_overlaps)):
         w_len = len(w_overlaps)
         for j in range(len(w_overlaps)):
-            # bbox_four_patch = []
             bbox_list = []
-            # bbox_class ={}
             for cls in range(1, num_classes + 1):
-                # bbox_list = []
                 for idx, bbox in enumerate(results[key_name[i * w_len + j]][0][cls]):  # 0 represent 1 image
                     if bbox[8] > vis_thresh:
                         bbox[np.arange(0, 8, 2)] = bbox[np.arange(0, 8, 2)] + w_overlaps[j] * 512
                         bbox[np.arange(1, 8, 2)] = bbox[np.arange(1, 8, 2)] + h_overlaps[i] * 512
                         bbox_list = bbox_list + [np.append(np.append(bbox[0:8], bbox[8]), int(cls))]
-                        # bbox_list.append(np.insert(bbox[5:13], 8, bbox[4]))
-                # bbox_class[cls] = bbox_class.get(cls, []) + bbox_list
-                # results[key_name[i * w_len + j]][0][cls] = np.array(bbox_list)  # 0 represent 1 image
-                # bbox_class[cls] = bbox_clas.get(cls, []) + bbox_list
+
             bbox_total[key_name[i * w_len + j]] = np.array(bbox_list)
             bbox_four_patch = copy.deepcopy(bbox_list)
             if i != 0:
@@ -236,14 +227,9 @@ def uniform_bbox_nms(h_overlaps, w_overlaps, key_name, results, vis_thresh):
             bbox_four_patch = np.array(bbox_four_patch)
             # area nms
             bbox_four_patch = area_and_point_nms(bbox_four_patch) if bbox_four_patch.shape[0] != 0 else np.array([])
-            # gpu nms
-            # bbox_four_patch = np.array(bbox_four_patch, dtype=np.float32)
-            # bbox_four_patch_idx =poly_nms_gpu(bbox_four_patch, 0.3) if bbox_four_patch.shape[0] != 0 else []
-            # bbox_four_patch = bbox_four_patch if len(bbox_four_patch_idx) == 0 else bbox_four_patch[bbox_four_patch_idx]
+
             h_max = h_overlaps[i + 1] * 512 if i < h_len - 1 else h_overlaps[-1] * 512 + 512
-            # h_max *= scale
             w_max = w_overlaps[j + 1] * 512 if j < w_len - 1 else w_overlaps[-1] * 512 + 512
-            # w_max *= scale
             valid_tmp = []
             right_tmp = []
             bottom_tmp = []

@@ -90,14 +90,11 @@ color_list = np.array(
     ).astype(np.float32)
 color_list = color_list.reshape((-1, 3)) * 255
 
-num_classes = 18
+num_classes = 2
 # dota_class_name = ['__background__', 'plane', 'baseball-diamond', 'bridge', 'ground-track-field', 'small-vehicle', 'large-vehicle', 'ship', 'tennis-court',
 #                 'basketball-court', 'storage-tank',  'soccer-ball-field', 'roundabout', 'harbor', 'swimming-pool', 'helicopter'
 #             ]
-dota_class_name = ['__background__', 'storage-tank', 'airport', 'tennis-court', 'helipad', 'swimming-pool',
-                           'ship', 'small-vehicle', 'helicopter', 'plane', 'ground-track-field',
-                           'roundabout', 'container-crane', 'soccer-ball-field', 'harbor', 'bridge',
-                           'basketball-court', 'large-vehicle', 'baseball-diamond']
+dota_class_name = ['__background__', 'small-vehicle', 'large-vehicle']
 nms = None  # not needed in pascal evaluation
 
 class GaussDistribution():
