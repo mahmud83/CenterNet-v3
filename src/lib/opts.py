@@ -161,6 +161,8 @@ class opts(object):
                              help='loss weight for keypoint local offsets.')
     self.parser.add_argument('--wh_weight', type=float, default=0.1,
                              help='loss weight for bounding box size.')
+    self.parser.add_argument('--angle_weight', type=float, default=0.5,
+                             help='loss weight for bounding box size.')
     # multi_pose
     self.parser.add_argument('--hp_weight', type=float, default=1,
                              help='loss weight for human pose offset.')
@@ -269,7 +271,8 @@ class opts(object):
     print('training chunk_sizes:', opt.chunk_sizes)
 
     opt.root_dir = os.path.join(os.path.dirname(__file__), '..', '..')
-    opt.data_dir = os.path.join(opt.root_dir, 'data')
+    opt.data_dir = '/Dataset/'
+    # opt.data_dir = os.path.join(opt.root_dir, 'data')
     opt.exp_dir = os.path.join(opt.root_dir, 'exp', opt.task)
     opt.save_dir = os.path.join(opt.exp_dir, opt.exp_id)
     opt.debug_dir = os.path.join(opt.save_dir, 'debug')
@@ -318,6 +321,13 @@ class opts(object):
                    'wh': 2 if not opt.cat_spec_wh else 2 * opt.num_classes}
       if opt.reg_offset:
         opt.heads.update({'reg': 2})
+    elif opt.task == 'dota_angle':
+      # assert opt.dataset in ['pascal', 'coco']
+      opt.heads = {'hm': opt.num_classes,
+                   'wh': 2 if not opt.cat_spec_wh else 2 * opt.num_classes,
+                   'angle': 1}
+      if opt.reg_offset:
+        opt.heads.update({'reg': 2})
     elif opt.task == 'multi_pose':
       # assert opt.dataset in ['coco_hp']
       opt.flip_idx = dataset.flip_idx
@@ -338,6 +348,11 @@ class opts(object):
       'ctdet': {'default_resolution': [512, 512], 'num_classes': 80, 
                 'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
                 'dataset': 'coco'},
+
+      'dota_angle': {'default_resolution': [512, 512], 'num_classes': 2,
+                'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
+                'dataset': 'dota_angle'},
+
       'exdet': {'default_resolution': [512, 512], 'num_classes': 80, 
                 'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
                 'dataset': 'coco'},

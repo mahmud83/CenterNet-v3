@@ -6,10 +6,12 @@ from .ctdet import CtdetTrainer
 from .ddd import DddTrainer
 from .exdet import ExdetTrainer
 from .multi_pose import MultiPoseTrainer
+from .ctdet_angle import CtdetAngleTrainer
 
 train_factory = {
   'exdet': ExdetTrainer, 
   'ddd': DddTrainer,
   'ctdet': CtdetTrainer,
-  'multi_pose': MultiPoseTrainer, 
+  'multi_pose': MultiPoseTrainer,
+  'dota_angle': CtdetAngleTrainer
 }
