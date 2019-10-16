@@ -11,6 +11,7 @@ import os
 from utils.image import flip, color_aug
 from utils.image import get_affine_transform, affine_transform
 from utils.image import gaussian_radius, draw_umich_gaussian, draw_msra_gaussian
+from utils.image import draw_ellipse_gaussian
 from utils.image import draw_dense_reg
 import math
 import copy
@@ -143,15 +144,20 @@ class CTDetDotaAngleDataset(data.Dataset):
             bbox[1] = np.clip(bbox[1], 0, output_h - 1)
             h, w = bbox[3], bbox[2]
             if h > 0 and w > 0:
-                radius = gaussian_radius((math.ceil(h), math.ceil(w)))
-                radius = max(0, int(radius))
-                radius = self.opt.hm_gauss if self.opt.mse_loss else radius
+
                 ct = np.array(
                     [bbox[0], bbox[1]], dtype=np.float32)
                 ct_int = ct.astype(np.int32)
-                draw_gaussian(hm[cls_id], ct_int, radius)
-                wh[k] = 1. * w, 1. * h
                 reg_angle[k] = bbox[4]
+                if not self.opt.ellipse:
+                    radius = gaussian_radius((math.ceil(h), math.ceil(w)))
+                    radius = max(0, int(radius))
+                    radius = self.opt.hm_gauss if self.opt.mse_loss else radius
+                    draw_gaussian(hm[cls_id], ct_int, radius)
+                else:
+                    draw_ellipse_gaussian(hm[cls_id], ct_int, w, h, reg_angle[k])
+                wh[k] = 1. * w, 1. * h
+
                 ind[k] = ct_int[1] * output_w + ct_int[0]
                 reg[k] = ct - ct_int
                 reg_mask[k] = 1
@@ -161,7 +167,8 @@ class CTDetDotaAngleDataset(data.Dataset):
                     draw_dense_reg(dense_wh, hm.max(axis=0), ct_int, wh[k], radius)
                 gt_det.append([ct[0] - w / 2, ct[1] - h / 2,
                                ct[0] + w / 2, ct[1] + h / 2, 1, cls_id])
-
+        if self.opt.ellipse:
+            hm = np.where(hm > 1e-2, hm, 0)
         ret = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh, 'angle': reg_angle}
         if self.opt.dense_wh:
             hm_a = hm.max(axis=0, keepdims=True)

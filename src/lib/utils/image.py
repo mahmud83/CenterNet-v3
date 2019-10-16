@@ -195,6 +195,35 @@ def draw_msra_gaussian(heatmap, center, sigma):
     g[g_y[0]:g_y[1], g_x[0]:g_x[1]])
   return heatmap
 
+def ellipse(shape, sigma, A):
+    A = A / np.pi * 180
+    sigma1, sigma2 = sigma
+    m, n = [(ss - 1.) / 2. for ss in shape]
+    y, x = np.ogrid[-m:m + 1, -n:n + 1]
+    h = np.exp(-0.5*(x * np.cos(A) + y * np.sin(A))**2 / (sigma1 **2) - (x * np.sin(A) - y * np.cos(A))**2 / (sigma2**2))
+    return h
+
+def draw_ellipse_gaussian(heatmap, center, w, h, angle, k=1):
+    # radius = 10
+    radius = np.floor(max(w/2, h/2)).astype(int)
+    diameter = 2 * radius + 1
+    # gaussian = gaussian2D((diameter, diameter), sigma=diameter / 6)
+    gaussian = ellipse((diameter, diameter), (w / 9, h / 9), angle*np.pi/180)
+    x, y = int(center[0]), int(center[1])
+
+    height, width = heatmap.shape[0:2]
+
+    left, right = min(x, radius), min(width - x, radius + 1)   # while (x,y) is located at roi edge or out of roi
+    top, bottom = min(y, radius), min(height - y, radius + 1)
+
+    masked_heatmap = heatmap[y - top:y + bottom, x - left:x + right]
+    masked_gaussian = gaussian[radius - top:radius + bottom, radius - left:radius + right]
+    if min(masked_gaussian.shape) > 0 and min(masked_heatmap.shape) > 0:  # TODO debug
+        np.maximum(masked_heatmap, masked_gaussian * k, out=masked_heatmap)
+    # np.clip()
+    heatmap = np.where(heatmap > 1e-2, heatmap, 0)
+    return heatmap
+
 def grayscale(image):
     return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 

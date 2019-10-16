@@ -226,6 +226,10 @@ class opts(object):
     self.parser.add_argument('--eval_oracle_dep', action='store_true', 
                              help='use ground truth depth.')
 
+    # circle or ellipse
+    self.parser.add_argument('--ellipse', action='store_true',
+                             help='use circle or ellipse')
+
   def parse(self, args=''):
     if args == '':
       opt = self.parser.parse_args()
@@ -288,7 +292,8 @@ class opts(object):
     input_h, input_w = dataset.default_resolution
     opt.mean, opt.std = dataset.mean, dataset.std
     opt.num_classes = dataset.num_classes
-    opt.num_joints = dataset.num_joints
+    if opt.task == 'dota_four':
+        opt.num_joints = dataset.num_joints
     # input_h(w): opt.input_h overrides opt.input_res overrides dataset default
     input_h = opt.input_res if opt.input_res > 0 else input_h
     input_w = opt.input_res if opt.input_res > 0 else input_w

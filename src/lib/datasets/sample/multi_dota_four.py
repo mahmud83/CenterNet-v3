@@ -12,6 +12,7 @@ from utils.image import flip, color_aug
 from utils.image import get_affine_transform, affine_transform
 from utils.image import gaussian_radius, draw_umich_gaussian, draw_msra_gaussian
 from utils.image import draw_dense_reg
+from utils.image import draw_ellipse_gaussian
 import math
 import copy
 import cv2
@@ -51,6 +52,42 @@ class MultiPoseDotaFourDataset(data.Dataset):
         while size - border // i <= border // i:
             i *= 2
         return border // i
+
+    def polygonToRotRectangle(self, bbox):
+        """
+        :param bbox: The polygon stored in format [x1, y1, x2, y2, x3, y3, x4, y4]
+        :return: Rotated Rectangle in format [cx, cy, w, h, theta]
+        """
+        bbox = np.array(bbox, dtype=np.float32)
+        bbox = np.reshape(bbox, newshape=(2, 4), order='F')
+        # set long side as base line
+        # side_length = [math.sqrt((bbox[0, i + 1] - bbox[0, i]) ** 2 + (bbox[1, i + 1] - bbox[1, i]) ** 2) for i in range(2)]
+        # idx = side_length.index(max(side_length))
+        # angle = math.atan2(-(bbox[0, idx + 1] - bbox[0, idx]), bbox[1, idx + 1] - bbox[1, idx])
+
+        angle = math.atan2(-(bbox[0, 1] - bbox[0, 0]), bbox[1, 1] - bbox[1, 0])
+
+        center = [[0], [0]]
+
+        for i in range(4):
+            center[0] += bbox[0, i]
+            center[1] += bbox[1, i]
+
+        center = np.array(center, dtype=np.float32) / 4.0
+
+        R = np.array([[math.cos(angle), -math.sin(angle)], [math.sin(angle), math.cos(angle)]], dtype=np.float32)
+
+        normalized = np.matmul(R.transpose(), bbox - center)
+
+        xmin = np.min(normalized[0, :])
+        xmax = np.max(normalized[0, :])
+        ymin = np.min(normalized[1, :])
+        ymax = np.max(normalized[1, :])
+
+        w = xmax - xmin + 1
+        h = ymax - ymin + 1
+
+        return [float(center[0]), float(center[1]), w, h, angle]
 
     def __getitem__(self, index):
         img_id = self.images[index]
@@ -117,13 +154,13 @@ class MultiPoseDotaFourDataset(data.Dataset):
         #     bbox_show[4:6] = affine_transform(bbox_show[4:6], trans_output)
         #     bbox_show[6:8] = affine_transform(bbox_show[6:8], trans_output)
         #
-        #     bbox = np.clip(bbox_show, 0, output_res - 1)
-        #     ct = self._calculate_intersection_point(bbox)
+        #     bbox_show = np.clip(bbox_show, 0, output_res - 1)
+        #     ct = self._calculate_intersection_point(bbox_show)
         #     ct_int = ct.astype(np.int32)
-        #     # countour = cv2.boxPoints(((bbox[0], bbox[1]), (bbox[2], bbox[3]), bbox[4] / math.pi * 180))
-        #     cv2.drawContours(inp_out, [np.array(bbox).reshape(4,2).astype(int)], 0, (0, 0, 255), 2)
-        #     cv2.circle(inp_out, tuple(ct_int), 2, (0, 0, 255), -1)
-        # # print('file {} num  {}'.format(file_name, num_objs))
+            # countour = cv2.boxPoints(((bbox[0], bbox[1]), (bbox[2], bbox[3]), bbox[4] / math.pi * 180))
+            # cv2.drawContours(inp_out, [np.array(bbox_show).reshape(4,2).astype(int)], 0, (0, 0, 255), 2)
+            # cv2.circle(inp_out, tuple(ct_int), 2, (0, 0, 255), -1)
+        # print('file {} num  {}'.format(file_name, num_objs))
         # cv2.imwrite('/Workspace/CenterNet/out_{}'.format(file_name), inp_out)
 
         hm = np.zeros((self.num_classes, output_res, output_res), dtype=np.float32)
@@ -158,11 +195,12 @@ class MultiPoseDotaFourDataset(data.Dataset):
 
             bbox = np.clip(bbox, 0, output_res - 1)
 
-            h, w = self._calculate_wh(bbox)
+            cx, cy, w, h, theta = self.polygonToRotRectangle(bbox)
             if (h > 0 and w > 0) or (rot != 0):
                 radius = gaussian_radius((math.ceil(h), math.ceil(w)))
                 radius = self.opt.hm_gauss if self.opt.mse_loss else max(0, int(radius))
-                ct = self._calculate_intersection_point(bbox)
+                ct = np.array([cx, cy]).astype(np.int32)
+                # ct = self._calculate_intersection_point(bbox)
                 ct_int = ct.astype(np.int32)
 
                 ind[k] = ct_int[1] * output_res + ct_int[0]
@@ -190,7 +228,10 @@ class MultiPoseDotaFourDataset(data.Dataset):
                                                pts[j, :2] - ct_int, radius, is_offset=True)
                                 draw_gaussian(dense_kps_mask[j], ct_int, radius)
                             draw_gaussian(hm_hp[j], pt_int, hp_radius)
-                draw_gaussian(hm[cls_id], ct_int, radius)
+                if not self.opt.ellipse:
+                    draw_gaussian(hm[cls_id], ct_int, radius)
+                else:
+                    draw_ellipse_gaussian(hm[cls_id], ct_int, w, h, theta)
                 gt_det.append([ct[0] - w / 2, ct[1] - h / 2,
                                ct[0] + w / 2, ct[1] + h / 2, 1] +
                               pts[:, :2].reshape(num_joints * 2).tolist() + [cls_id])
@@ -198,6 +239,8 @@ class MultiPoseDotaFourDataset(data.Dataset):
             hm = hm * 0 + 0.9999
             reg_mask *= 0
             kps_mask *= 0
+
+        hm = np.where(hm > 1e-2, hm, 0)
         ########### plot hm
         # for i in range(hm.shape[0]):
         #   idx = np.where(hm[i]>=0.05)
