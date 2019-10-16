@@ -90,7 +90,7 @@ class MultiPoseDotaFourDataset(data.Dataset):
         inp = cv2.warpAffine(img, trans_input,
                              (self.opt.input_res, self.opt.input_res),
                              flags=cv2.INTER_LINEAR)
-        ################## plot
+        ################## plot input
         # cv2.imwrite('/Workspace/CenterNet/in_{}'.format(file_name), inp)
 
         inp = (inp.astype(np.float32) / 255.)
@@ -105,25 +105,25 @@ class MultiPoseDotaFourDataset(data.Dataset):
         num_joints = self.num_joints
         trans_output_rot = get_affine_transform(c, s, rot, [output_res, output_res])
         trans_output = get_affine_transform(c, s, 0, [output_res, output_res])
-        ################# plot
+        ################# plot gt
         # inp_out = cv2.warpAffine(img_show, trans_output,
         #                          (output_res, output_res),
         #                          flags=cv2.INTER_LINEAR)
         # for k in range(num_objs):
         #     ann = anns[k]
-        #     bbox = copy.deepcopy(ann['bbox'])
-        #     bbox[:2] = affine_transform(bbox[:2], trans_output)
-        #     bbox[2:4] = affine_transform(bbox[2:4], trans_output)
-        #     bbox[4:6] = affine_transform(bbox[4:6], trans_output)
-        #     bbox[6:8] = affine_transform(bbox[6:8], trans_output)
+        #     bbox_show = copy.deepcopy(ann['bbox'])
+        #     bbox_show[:2] = affine_transform(bbox_show[:2], trans_output)
+        #     bbox_show[2:4] = affine_transform(bbox_show[2:4], trans_output)
+        #     bbox_show[4:6] = affine_transform(bbox_show[4:6], trans_output)
+        #     bbox_show[6:8] = affine_transform(bbox_show[6:8], trans_output)
         #
-        #     bbox = np.clip(bbox, 0, output_res - 1)
+        #     bbox = np.clip(bbox_show, 0, output_res - 1)
         #     ct = self._calculate_intersection_point(bbox)
         #     ct_int = ct.astype(np.int32)
         #     # countour = cv2.boxPoints(((bbox[0], bbox[1]), (bbox[2], bbox[3]), bbox[4] / math.pi * 180))
-        #     # cv2.drawContours(inp_out, [np.array(bbox).reshape(4,2).astype(int)], 0, (0, 0, 255), 2)
+        #     cv2.drawContours(inp_out, [np.array(bbox).reshape(4,2).astype(int)], 0, (0, 0, 255), 2)
         #     cv2.circle(inp_out, tuple(ct_int), 2, (0, 0, 255), -1)
-        # print('file {} num  {}'.format(file_name, num_objs))
+        # # print('file {} num  {}'.format(file_name, num_objs))
         # cv2.imwrite('/Workspace/CenterNet/out_{}'.format(file_name), inp_out)
 
         hm = np.zeros((self.num_classes, output_res, output_res), dtype=np.float32)
@@ -198,6 +198,12 @@ class MultiPoseDotaFourDataset(data.Dataset):
             hm = hm * 0 + 0.9999
             reg_mask *= 0
             kps_mask *= 0
+        ########### plot hm
+        # for i in range(hm.shape[0]):
+        #   idx = np.where(hm[i]>=0.05)
+        #   inp_out[idx] = 0
+        #   cv2.imwrite('/Workspace/CenterNet/hm_{}_{}'.format(i, file_name), hm[i] * 255)
+        # cv2.imwrite('/Workspace/CenterNet/out_{}'.format(file_name), inp_out)
         ret = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind,
                'hps': kps, 'hps_mask': kps_mask}
         if self.opt.dense_hp:

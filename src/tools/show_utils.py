@@ -358,7 +358,17 @@ def show_bbox(bbox_total, num_classes, image_np, name):
                 image_show = add_bbox(image_np, bbox[0:10], j + 1, bbox[10])
     cv2.imwrite(name, image_show)
 
-def show_bbox_nms(bbox_total, num_classes, image_np, name):
+def show_bbox_four(bbox_total, num_classes, image_np, name):
+    # for bbox_total_s in bbox_total:
+    image = image_np
+
+    for bbox in bbox_total:
+        if bbox[10] > 0.3:
+            image = add_bbox(image_np, bbox[2:10], int(bbox[11]), bbox[10])
+            # image = add_bbox(image_np, bbox[:8], int(bbox[9]), bbox[8])
+    cv2.imwrite(name, image)
+
+def show_bbox_angle(bbox_total, num_classes, image_np, name):
     # for bbox_total_s in bbox_total:
     image = image_np
 

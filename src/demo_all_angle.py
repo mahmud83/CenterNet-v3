@@ -14,7 +14,7 @@ from shapely.geometry import Polygon, MultiPoint
 from PIL import Image, ImageDraw, ImageFont
 import shapely
 import copy
-from show_utils import show_bbox, show_bbox_nms, area_and_point_nms
+from show_utils import show_bbox, show_bbox_angle, area_and_point_nms
 from nms_iou.nms import nms
 
 image_ext = ['jpg', 'jpeg', 'png', 'webp']
@@ -362,7 +362,7 @@ def demo(opt):
         # bbox_image_total = nms_overlap_all(bbox_image_total, 0.1, 0)
         # bbox_dict = bbox_txt_ready_nms(bbox_image_total, bbox_dict, name)
         name_save = '/Dataset/DOTA/show/show_jpg/{}.jpg'.format(name)
-        show_bbox_nms(bbox_image_total, num_classes, image_show, name_save)
+        show_bbox_angle(bbox_image_total, num_classes, image_show, name_save)
         # line_img = show_line(image_show, h_overlaps, w_overlaps)
         # cv2.imwrite('/home/lyc/data/dota_results/no_nms_show/line_{}.jpg'.format(name), line_img)
     # create_txt('/home/lyc/data/dota_results/txt/', bbox_dict)
